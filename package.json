@@ -1,0 +1,38 @@
+{
+  "name": "nb-music-api",
+  "description": "NB Music backend server source code",
+  "version": "2.0.2",
+  "license": "AGPL-3.0",
+  "scripts": {
+    "build": "node node_modules/typescript/bin/tsc",
+    "start": "yarn build && node dist/app.js",
+    "dev": "node node_modules/nodemon/bin/nodemon.js"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "axios": "^1.9.0",
+    "express": "^5.1.0",
+    "ioredis": "^5.6.1",
+    "mysql2": "^3.14.1",
+    "@octokit/webhooks": "^12.0.4",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/mysql": "^2.15.27",
+    "@types/node": "^22.15.18",
+    "nodemon": "^3.1.10",
+    "typescript": "^5.8.3"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src",
+      "config.json"
+    ],
+    "ext": "ts json",
+    "execMap": {
+      "ts": "yarn run start"
+    }
+  }
+}
