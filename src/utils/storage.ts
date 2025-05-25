@@ -745,6 +745,18 @@ class DatabaseAction {
             }
         });
     }
+
+    exist() {
+        return new Promise<boolean>((resolve, reject) => {
+            this
+                .field('1')
+                .limit(1)
+                .select()
+                .then((result) => {
+                    resolve(result !== '' || result.length !== 0);
+                }, reject);
+        });
+    }
     
     query(
         SQL : string,
@@ -922,7 +934,9 @@ class CacheDatabaseAction {
                 };
 
                 if (this.connection.type === 'redis') {
-                    this.connection.connection.hset(this.tableName, this.valueName, value, queryCallback);
+                    this.connection.connection.hset(this.tableName, {
+                        [this.valueName]: value
+                    }, queryCallback);
                 } else if (this.connection.type === 'sqlite') {
                     this.checkTableIsExists(
                         this.tableName,
@@ -991,6 +1005,14 @@ class CacheDatabaseAction {
             } catch (e) {
                 reject(e);
             }
+        });
+    }
+
+    exist() {
+        return new Promise<boolean>((resolve, reject) => {
+            this.get().then((result) => {
+                resolve(result !== '');
+            }, reject);
         });
     }
 

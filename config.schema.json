@@ -159,9 +159,14 @@
         "banDuration": 60
       },
       "properties": {
-        "maxSpeed": {
+        "guestMaxSpeed": {
           "type": "integer",
-          "description": "访问速率限制，单位：次/分钟",
+          "description": "访客访问速率限制，单位：次/分钟",
+          "default": 45
+        },
+        "userMaxSpeed": {
+          "type": "integer",
+          "description": "登录用户访问速率限制，单位：次/分钟",
           "default": 75
         },
         "banDuration": {

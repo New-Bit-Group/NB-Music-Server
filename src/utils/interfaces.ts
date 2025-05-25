@@ -30,7 +30,8 @@ interface Config {
     };
     administrators: string[]|boolean;
     speedLimit: {
-        maxSpeed: number;
+        guestMaxSpeed: number;
+        userMaxSpeed: number;
         banDuration: number;
     },
     webhook?: {

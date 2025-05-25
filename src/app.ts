@@ -2,6 +2,7 @@ import { Config } from "./utils/interfaces"
 import Logger from "./utils/logger";
 import { responseFormat } from './utils';
 import Storage from './utils/storage';
+import SpeedLimit from "./utils/speed-limit";
 import WebhookRouter from "./utils/webhook";
 
 import AuthRouter from "./routes/auth";
@@ -147,6 +148,11 @@ class App {
 
     startServer() : void {
         const app = express();
+
+        if (this.config) {
+            SpeedLimit.init(this.config);
+            app.use(SpeedLimit.middleware);
+        }
 
         app.use(express.json());
 
