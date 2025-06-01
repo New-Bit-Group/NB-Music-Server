@@ -1,6 +1,6 @@
-import { Config } from "./interfaces";
-import Storage from "./storage";
-import { responseFormat, getUserID, isAdmin } from "./index";
+import config from "../config"
+import { responseFormat } from "../utils";
+import { getUser, isAdmin } from '../utils/auth';
 
 class SpeedLimit {
     private static records : {
@@ -12,11 +12,7 @@ class SpeedLimit {
         }
     } = {};
 
-    private static config : Config;
-
-    static init(config: Config) {
-        SpeedLimit.config = config;
-
+    static {
         setInterval(() => {
             Object.keys(SpeedLimit.records).forEach(ip => {
                 // 如果访客没有被ban，就重置他的访问次数
@@ -50,37 +46,31 @@ class SpeedLimit {
             return;
         }
 
-        let isLogin = false;
+        let user;
         let limit : number;
         const sessionId = req.headers.authorization?.split(' ')[1];
 
         if (sessionId) {
-            isLogin =
-                await Storage
-                    .getCacheDatabaseAction()
-                    .table('nb_music_session')
-                    .name(sessionId)
-                    .exist()
+            user = await getUser(req, res, true);
         }
 
-        if (isLogin) {
-            const user = await getUserID(req, res);
-            if (user && isAdmin(user.userId, SpeedLimit.config)) {
+        if (user) {
+            if (isAdmin(user.userId, config)) {
                 // 管理员不受速率限制
                 next();
                 return;
             }
 
-            limit = SpeedLimit.config.speedLimit.userMaxSpeed;
+            limit = config.speedLimit.userMaxSpeed;
         } else {
-            limit = SpeedLimit.config.speedLimit.guestMaxSpeed;
+            limit = config.speedLimit.guestMaxSpeed;
         }
 
         SpeedLimit.records[req.ip].visits++;
 
         if (SpeedLimit.records[req.ip].visits > limit) {
             SpeedLimit.records[req.ip].isBan = true;
-            SpeedLimit.records[req.ip].banEndTime = Math.floor(Date.now() / 1000) + SpeedLimit.config.speedLimit.banDuration;
+            SpeedLimit.records[req.ip].banEndTime = Math.floor(Date.now() / 1000) + config.speedLimit.banDuration;
 
             res.status(403).send(responseFormat(null, '您触发了访问频率限制，请稍后再试', -8));
             return;

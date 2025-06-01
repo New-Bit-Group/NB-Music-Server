@@ -1,10 +1,10 @@
 import {
-    Config,
     DataTableWhere,
     DatabaseTypes, CacheDatabaseTypes,
     DatabaseLimitNumber, DatabaseOrders
 } from "./interfaces";
 import Logger from "./logger";
+import config from "../config";
 
 import MySQL from 'mysql2';
 import Redis from 'ioredis';
@@ -17,14 +17,14 @@ class Storage {
 
     private static cacheDatabaseConnection : CacheDatabaseTypes;
 
-    static connect(config : Config) {
+    static init() {
         try {
             Logger.notice('开始初始化数据库');
-            this.connectSQLite(config);
-            this.connectMySQL(config);
-            this.connectRedis(config);
+            Storage.connectSQLite();
+            Storage.connectMySQL();
+            Storage.connectRedis();
 
-            this.createDataTable();
+            Storage.createDataTable();
             Logger.notice('数据库初始化完成');
         } catch (e) {
             Logger.error('数据库初始化失败');
@@ -35,7 +35,7 @@ class Storage {
         }
     }
 
-    private static connectMySQL(config : Config) {
+    private static connectMySQL() {
         try {
             if (config.database.mysql) {
                 this.databaseConnection = {
@@ -59,7 +59,7 @@ class Storage {
         }
     }
 
-    private static connectRedis(config : Config) {
+    private static connectRedis() {
         try {
             if (config.cacheDatabase.redis) {
                 this.cacheDatabaseConnection = {
@@ -86,7 +86,7 @@ class Storage {
         }
     }
 
-    private static connectSQLite(config : Config) {
+    private static connectSQLite() {
         try {
             if (config.database.sqlite && !config.database.mysql) {
                 fs.mkdirSync(path.dirname(config.database.sqlite.path), {recursive: true});
