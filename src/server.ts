@@ -25,7 +25,7 @@ function handlingErrorMessage(e: HandledError) {
     if (e.error.stack != null) {
         Logger.debug(e.error.stack);
     }
-};
+}
 
 process.on("uncaughtException", (err) => {
     const e = handlingError(err);
