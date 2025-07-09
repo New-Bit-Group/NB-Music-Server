@@ -1,4 +1,4 @@
-function responseFormat(
+function response(
     data : any = null,
     message : string = "Success",
     status : number = 0
@@ -101,7 +101,7 @@ function paging(
 }
 
 export {
-    responseFormat,
+    response,
     randomColor,
     paging
 };

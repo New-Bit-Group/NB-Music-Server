@@ -20,7 +20,7 @@ class Logger {
     }
 
     static debug(message: string) {
-        console.debug("\x1B[34m[" + new Date().toLocaleString(undefined, this.dateFormat) + "][DEBUG] " + message + "\x1B[0m");
+        console.info("\x1B[34m[" + new Date().toLocaleString(undefined, this.dateFormat) + "][DEBUG] " + message + "\x1B[0m");
     }
 }
 

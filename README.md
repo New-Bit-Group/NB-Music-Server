@@ -20,7 +20,7 @@
  
 ## 基础信息
 
-- **Base URL**: `https://api.nb-music.tianjiu-app.top/v2`
+- **Base URL**: `https://nb-music.js.cool/api/v2`
 - **认证方式**: `Authorization: Bearer <Session Token>`
 - **请求/响应数据格式**: `application/json`
 - **错误响应**: 

@@ -4,28 +4,33 @@ import {
     DatabaseLimitNumber, DatabaseOrders
 } from "./interfaces";
 import Logger from "./logger";
-import config from "../config";
+import getConfig from "./config-loader";
 
 import MySQL from 'mysql2';
 import Redis from 'ioredis';
 import SQLite from 'sqlite3';
 import fs from "fs";
 import path from "path";
+import { ServerResourceNotInitializeError } from "./error";
 
 class Storage {
     private static databaseConnection : DatabaseTypes;
 
     private static cacheDatabaseConnection : CacheDatabaseTypes;
 
-    static init() {
+    private static isInitialized : boolean = false;
+
+    static initialize() {
         try {
             Logger.notice('开始初始化数据库');
             Storage.connectSQLite();
             Storage.connectMySQL();
             Storage.connectRedis();
 
-            Storage.createDataTable();
+            Storage.initializeDataTable();
             Logger.notice('数据库初始化完成');
+
+            Storage.isInitialized = true;
         } catch (e) {
             Logger.error('数据库初始化失败');
             // @ts-ignore
@@ -37,6 +42,7 @@ class Storage {
 
     private static connectMySQL() {
         try {
+            const config = getConfig();
             if (config.database.mysql) {
                 this.databaseConnection = {
                     type: 'mysql',
@@ -61,6 +67,7 @@ class Storage {
 
     private static connectRedis() {
         try {
+            const config = getConfig();
             if (config.cacheDatabase.redis) {
                 this.cacheDatabaseConnection = {
                     type: 'redis',
@@ -88,6 +95,7 @@ class Storage {
 
     private static connectSQLite() {
         try {
+            const config = getConfig();
             if (config.database.sqlite && !config.database.mysql) {
                 fs.mkdirSync(path.dirname(config.database.sqlite.path), {recursive: true});
                 this.databaseConnection = {
@@ -126,16 +134,12 @@ class Storage {
         }
     }
 
-    private static createDataTable() {
+    private static initializeDataTable() {
         const SQL = fs.readFileSync(path.join(__dirname, '..', '..', 'create-datatable.sql'), 'utf8');
         const queryCallback = (error : any) => {
             if (error) {
-                Logger.error('创建新数据表失败');
+                Logger.error('初始化数据表失败');
                 Logger.error(error.message);
-
-                if (error.stack != null) {
-                    Logger.debug(error.stack);
-                }
 
                 process.exit(1);
             }
@@ -149,10 +153,18 @@ class Storage {
     }
 
     static getDatabaseAction() {
+        if (!Storage.isInitialized) {
+            throw new ServerResourceNotInitializeError('数据库未初始化', 'Storage.getDatabaseAction');
+        }
+
         return new DatabaseAction(this.databaseConnection);
     }
 
     static getCacheDatabaseAction() {
+        if (!Storage.isInitialized) {
+            throw new ServerResourceNotInitializeError('数据库未初始化', 'Storage.getCacheDatabaseAction');
+        }
+
         return new CacheDatabaseAction(this.cacheDatabaseConnection);
     }
 }
@@ -1010,9 +1022,17 @@ class CacheDatabaseAction {
 
     exist() {
         return new Promise<boolean>((resolve, reject) => {
-            this.get().then((result) => {
-                resolve(result !== '');
-            }, reject);
+            if (this.connection.type === 'redis') {
+                this.connection.connection.hexists(this.tableName, this.valueName, (error, result) => {
+                    if (error) reject(error);
+
+                    resolve(result === 1);
+                });
+            } else {
+                this.get().then((result) => {
+                    resolve(result !== '');
+                }, reject);
+            }
         });
     }
 

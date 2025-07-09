@@ -1,17 +1,21 @@
-import Logger from "./utils/logger";
+import Logger from "./logger";
 import path from "path";
 import fs from "fs";
-import { Config } from "./utils/interfaces";
+import { Config } from "./interfaces";
 import { Ajv, ErrorObject } from "ajv";
 
 class ConfigLoader {
-    static readonly config: Config = ConfigLoader.loadConfig();
+    private static config: Config = <Config>{};
+
+    static initialize() {
+        ConfigLoader.config = ConfigLoader.loadConfig();
+    }
 
     private static loadConfig() : Config | never {
         try {
             Logger.notice("开始加载配置文件");
 
-            const configPath = path.join(__dirname, "..", "config.json");
+            const configPath = path.join(__dirname, "..", "..", "config.json");
             if (fs.existsSync(configPath)) {
                 let config;
                 try {
@@ -58,7 +62,7 @@ class ConfigLoader {
             const validate = ajv.compile(
                 JSON.parse(
                     fs.readFileSync(
-                        path.join(__dirname, "..", "config.schema.json"),
+                        path.join(__dirname, "..", "..", "config.schema.json"),
                         "utf-8"
                     )
                 )
@@ -100,7 +104,14 @@ class ConfigLoader {
             process.exit(1);
         }
     }
+
+    static getConfig() : Config {
+        return ConfigLoader.config;
+    }
 }
 
-export default ConfigLoader.config;
-module.exports = ConfigLoader.config;
+export default function getConfig() : Config {
+    return ConfigLoader.getConfig();
+};
+
+export { ConfigLoader };

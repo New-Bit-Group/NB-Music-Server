@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import config from '../config';
-import { responseFormat, randomColor, paging } from '../utils';
-import { getUser, isAdmin } from '../utils/auth';
+import { response, randomColor, paging } from '../utils';
 import Storage from '../utils/storage';
+import { ServerDBError, ClientParamsError } from "../utils/error";
+import Logger from "../utils/logger";
 
 const router = Router();
 
@@ -31,13 +31,15 @@ router.get('/', (req, res) => {
         .select()
         .then((result) => {
             if (typeof result === 'string') {
-                res.status(500).send(responseFormat(null, '数据格式异常', -1));
-                return;
+                res.status(500).send(response(null, '数据格式有误', -1));
+                Logger.debug('result is ' + typeof result);
+                Logger.debug('result:' + result);
+                throw new ServerDBError('数据格式有误', req.originalUrl, `name:${search}@tags`);
             }
 
             const pageData = paging(page, limit, result);
 
-            res.status(200).send(responseFormat({
+            res.status(200).send(response({
                 tags: pageData.data,
                 total: pageData.total,
                 pageTotal: pageData.pageTotal,
@@ -46,22 +48,19 @@ router.get('/', (req, res) => {
             }));
         })
         .catch((e) => {
-            res.status(500).send(responseFormat(null, '获取数据失败: ' + e.message, -1));
+            res.status(500).send(response(null, '获取数据失败: ' + e.message, -1));
+            throw new ServerDBError('获取音乐标签列表失败: ' + e.message, req.originalUrl, `name:${search}@tags`);
         });
 });
 
-router.post('/', async (req, res) => {
-    const session = await getUser(req, res);
-    if (!session) return;
+router.post('/', async (req : any, res) => {
+    req.mustIsAdministrator();
 
-    if (!isAdmin(session.userId, config)) {
-        res.status(403).send(responseFormat(null, '无权限访问', -7));
-        return;
-    }
+    const tagId = Math.random().toString(16).slice(2);
 
     if (typeof req.body.name !== 'string') {
-        res.status(400).send(responseFormat(null, '请求参数错误', -2));
-        return;
+        res.status(400).send(response(null, '请求参数错误', -2));
+        throw new ClientParamsError('请求参数错误', req.originalUrl);
     }
 
     let tagColor : string;
@@ -78,24 +77,19 @@ router.post('/', async (req, res) => {
         .getDatabaseAction()
         .table('tags')
         .insert({
-            id: Math.random().toString(16).slice(2),
+            id: tagId,
             name: req.body.name,
             color: tagColor
         }).then(() => {
-        res.status(200).send(responseFormat());
-    }).catch((e) => {
-        res.status(500).send(responseFormat(null, '添加数据失败: ' + e.message, -1));
-    });
+            res.status(200).send(response());
+        }).catch((e) => {
+            res.status(500).send(response(null, '添加数据失败: ' + e.message, -1));
+            throw new ServerDBError('添加音乐标签失败: ' + e.message, req.originalUrl, `id:${tagId}@tags`);
+        });
 });
 
-router.put('/:id', async (req, res) => {
-    const session = await getUser(req, res);
-    if (!session) return;
-
-    if (!isAdmin(session.userId, config)) {
-        res.status(403).send(responseFormat(null, '无权限访问', -7));
-        return;
-    }
+router.put('/:id', async (req : any, res) => {
+    req.mustIsAdministrator();
 
     let updateData : {
         name?: string;
@@ -115,8 +109,8 @@ router.put('/:id', async (req, res) => {
 
     // 没有进行任何修改，判定错误
     if (Object.keys(updateData).length === 0) {
-        res.status(400).send(responseFormat(null, '请求参数错误', -2));
-        return;
+        res.status(400).send(response(null, '请求参数错误', -2));
+        throw new ClientParamsError('请求参数错误', req.originalUrl);
     }
 
     Storage
@@ -125,20 +119,15 @@ router.put('/:id', async (req, res) => {
         .where('id', req.params.id)
         .update(updateData)
         .then(() => {
-            res.status(200).send(responseFormat());
+            res.status(200).send(response());
         }).catch((e) => {
-        res.status(500).send(responseFormat(null, '添加数据失败: ' + e.message, -1));
-    });
+            res.status(500).send(response(null, '添加数据失败: ' + e.message, -1));
+            throw new ServerDBError('添加音乐标签失败: ' + e.message, req.originalUrl, `id:${req.params.id}@tags`);
+        });
 });
 
-router.delete('/:id', async (req, res) => {
-    const session = await getUser(req, res);
-    if (!session) return;
-
-    if (!isAdmin(session.userId, config)) {
-        res.status(403).send(responseFormat(null, '无权限访问', -7));
-        return;
-    }
+router.delete('/:id', async (req : any, res) => {
+    req.mustIsAdministrator();
 
     Storage
         .getDatabaseAction()
@@ -146,10 +135,11 @@ router.delete('/:id', async (req, res) => {
         .where('id', req.params.id)
         .delete()
         .then(() => {
-            res.status(200).send(responseFormat());
+            res.status(200).send(response());
         }).catch((e) => {
-        res.status(500).send(responseFormat(null, '删除数据失败: ' + e.message, -1));
-    });
+            res.status(500).send(response(null, '删除数据失败: ' + e.message, -1));
+            throw new ServerDBError('删除音乐标签失败: ' + e.message, req.originalUrl, `id:${req.params.id}@tags`);
+        });
 });
 
 module.exports = router;

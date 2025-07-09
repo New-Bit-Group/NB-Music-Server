@@ -6,10 +6,10 @@ interface Config {
     port: number;
     database: {
         mysql?: {
-            host: string,
-            port: number,
-            user: string,
-            password: string,
+            host: string;
+            port: number;
+            user: string;
+            password: string;
             database: string
         };
         sqlite?: {
@@ -18,25 +18,29 @@ interface Config {
     };
     cacheDatabase: {
         redis?: {
-            host: string,
-            port: number,
-            username: string,
-            password: string,
+            host: string;
+            port: number;
+            username: string;
+            password: string;
             database: number
         };
         sqlite?: {
             path: string
         };
     };
-    administrators: string[]|boolean;
+    administrators: string[] | boolean;
     speedLimit: {
         guestMaxSpeed: number;
         userMaxSpeed: number;
         banDuration: number;
-    },
-    webhook?: {
-        secret: string;
-    }
+    };
+    trustProxy: boolean | string | string[];
+}
+
+interface HandledError {
+    error: Error;
+    resource: string;
+    params: Object | undefined;
 }
 
 interface DataTableWhere {
@@ -70,14 +74,14 @@ interface DatabaseOrders {
     [name: string]: "ASC" | "DESC";
 }
 
-type GeneralDatabaseTypes = MySQLDatabaseType | RedisDatabaseType | SQLiteDatabaseType;
 type DatabaseTypes = MySQLDatabaseType | SQLiteDatabaseType;
 type CacheDatabaseTypes = RedisDatabaseType | SQLiteDatabaseType;
 
 export type {
     Config,
+    HandledError,
     DataTableWhere,
-    GeneralDatabaseTypes, DatabaseTypes, CacheDatabaseTypes,
+    DatabaseTypes, CacheDatabaseTypes,
     MySQLDatabaseType, RedisDatabaseType, SQLiteDatabaseType,
     DatabaseLimitNumber, DatabaseOrders
 };

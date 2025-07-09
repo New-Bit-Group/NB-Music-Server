@@ -176,18 +176,23 @@
         }
       }
     },
-    "webhook": {
-      "type": "object",
-      "description": "Webhook 配置",
-      "required": [
-        "secret"
-      ],
-      "properties": {
-        "secret": {
-          "type": "string",
-          "description": "Webhook 密钥"
+    "trustProxy": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
-      }
+      ],
+      "description": "是否信任代理返回的IP地址",
+      "default": false
     }
   }
 }
