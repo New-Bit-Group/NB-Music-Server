@@ -20,8 +20,8 @@ class Auth {
             req.mustLogin = () => {
                 switch (status) {
                     case -2:
-                        res.status(400).send(response(null, '请求参数错误', -2));
-                        throw new ClientParamsError('请求参数错误', req.originalUrl);
+                        res.status(400).send(response(null, '请求参数有误', -2));
+                        throw new ClientParamsError('请求参数有误', req.originalUrl);
                     case -4:
                         res.status(401).send(response(null, '未登录', -4));
                         throw new ClientNotLoginError('未登录', req.originalUrl);

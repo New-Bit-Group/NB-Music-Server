@@ -1,7 +1,7 @@
 import {
     DataTableWhere,
     DatabaseTypes, CacheDatabaseTypes,
-    DatabaseLimitNumber, DatabaseOrders
+    DatabaseLimitNumber, DatabaseOrders, DatabaseCacheSetting
 } from "./interfaces";
 import Logger from "./logger";
 import getConfig from "./config-loader";
@@ -179,6 +179,11 @@ class DatabaseAction {
     private readonly fields : string[] = [];
     private readonly orders : DatabaseOrders = {};
     private readonly isFetchSQL : boolean = false;
+    private readonly cacheSetting : DatabaseCacheSetting = {
+        enable: Storage.getCacheDatabaseAction().handle().type === 'redis',
+        time: 120,
+        table: 'nb_music_database_cache'
+    }
 
     constructor(
         connection : DatabaseTypes,
@@ -187,7 +192,8 @@ class DatabaseAction {
         limitNumber? : DatabaseLimitNumber,
         fields? : string[],
         orders? : DatabaseOrders,
-        isFetchSQL? : boolean
+        isFetchSQL? : boolean,
+        cacheSetting? : DatabaseCacheSetting
     ) {
         this.connection = connection;
 
@@ -213,6 +219,10 @@ class DatabaseAction {
         
         if (isFetchSQL) {
             this.isFetchSQL = isFetchSQL;
+        }
+
+        if (cacheSetting) {
+            this.cacheSetting = cacheSetting;
         }
     }
 
@@ -282,7 +292,8 @@ class DatabaseAction {
             this.limitNumber,
             this.fields,
             this.orders,
-            this.isFetchSQL
+            this.isFetchSQL,
+            this.cacheSetting
         );
     }
 
@@ -429,7 +440,8 @@ class DatabaseAction {
             },
             this.fields,
             this.orders,
-            this.isFetchSQL
+            this.isFetchSQL,
+            this.cacheSetting
         );
     }
 
@@ -454,7 +466,8 @@ class DatabaseAction {
             this.limitNumber,
             fields,
             this.orders,
-            this.isFetchSQL
+            this.isFetchSQL,
+            this.cacheSetting
         );
     }
 
@@ -489,7 +502,8 @@ class DatabaseAction {
             this.limitNumber,
             this.fields,
             Object.assign(this.orders, orderObject),
-            this.isFetchSQL
+            this.isFetchSQL,
+            this.cacheSetting
         );
     }
 
@@ -518,7 +532,8 @@ class DatabaseAction {
             this.limitNumber,
             this.fields,
             this.orders,
-            enable
+            enable,
+            this.cacheSetting
         );
     }
 
@@ -545,7 +560,7 @@ class DatabaseAction {
                 SQL += ` FROM \`${this.tableName}\``;
 
                 if (this.whereArray.length !== 0) {
-                    const whereResult = this.whereArrayToSQL(this.whereArray);
+                    const whereResult = this.whereArrayConversionToSQL(this.whereArray);
 
                     SQL += whereResult.SQL;
                     queryParams = whereResult.queryParams;
@@ -576,23 +591,15 @@ class DatabaseAction {
                     }
                 }
 
-                if (this.isFetchSQL) {
-                    resolve(SQL);
-                } else {
-                    const queryCallback = (error : any, results : any) => {
-                        if (error) reject(error);
+                const queryCallback = (error : any, results : any) => {
+                    if (error) reject(error);
 
-                        if (Array.isArray(results)) {
-                            resolve(results);
-                        }
-                    };
-
-                    if (this.connection.type === 'mysql') {
-                        this.connection.connection.query(SQL, queryParams, queryCallback);
-                    } else if (this.connection.type === 'sqlite') {
-                        this.connection.connection.all(SQL, queryParams, queryCallback);
+                    if (Array.isArray(results)) {
+                        resolve(results);
                     }
-                }
+                };
+
+                this.runQuery(resolve, SQL, queryParams, queryCallback);
             } catch (e) {
                 reject(e);
             }
@@ -614,7 +621,7 @@ class DatabaseAction {
 
                 let SQL = `SELECT 1 FROM \`${this.tableName}\``;
 
-                const whereResult = this.whereArrayToSQL(this.whereArray);
+                const whereResult = this.whereArrayConversionToSQL(this.whereArray);
                 SQL += whereResult.SQL + ` LIMIT 1`;
 
                 // 判断表中是否存在符合条件的数据
@@ -631,11 +638,7 @@ class DatabaseAction {
                     }
                 };
 
-                if (this.connection.type === 'mysql') {
-                    this.connection.connection.query(SQL, whereResult.queryParams, queryCallback);
-                } else if (this.connection.type === 'sqlite') {
-                    this.connection.connection.all(SQL, whereResult.queryParams, queryCallback);
-                }
+                this.runQuery(null, SQL, whereResult.queryParams, queryCallback);
             } catch (e) {
                 reject(e);
             }
@@ -654,21 +657,13 @@ class DatabaseAction {
                 let SQL = `INSERT INTO \`${this.tableName}\` (${Object.keys(data).join(', ')}) `;
                     SQL += `VALUES (${Object.values(data).map(() => '?').join(', ')})`;
 
-                if (this.isFetchSQL) {
-                    resolve(SQL);
-                } else {
-                    const queryCallback = (error : any) => {
-                        if (error) reject(error);
+                const queryCallback = (error : any) => {
+                    if (error) reject(error);
 
-                        resolve();
-                    };
+                    resolve();
+                };
 
-                    if (this.connection.type === 'mysql') {
-                        this.connection.connection.query(SQL, Object.values(data), queryCallback);
-                    } else if (this.connection.type === 'sqlite') {
-                        this.connection.connection.all(SQL, Object.values(data), queryCallback);
-                    }
-                }
+                this.runQuery(resolve, SQL, Object.values(data), queryCallback);
             } catch (e) {
                 reject(e);
             }
@@ -692,28 +687,20 @@ class DatabaseAction {
 
                 if (this.whereArray.length !== 0) {
                     // 拼接 WHERE 语句
-                    const whereResult = this.whereArrayToSQL(this.whereArray);
+                    const whereResult = this.whereArrayConversionToSQL(this.whereArray);
                     SQL += whereResult.SQL;
 
                     // 获取查询参数
                     queryParams = Object.values(data).concat(whereResult.queryParams);
                 }
 
-                if (this.isFetchSQL) {
-                    resolve(SQL);
-                } else {
-                    const queryCallback = (error : any) => {
-                        if (error) reject(error);
+                const queryCallback = (error : any) => {
+                    if (error) reject(error);
 
-                        resolve();
-                    };
+                    resolve();
+                };
 
-                    if (this.connection.type === 'mysql') {
-                        this.connection.connection.query(SQL, queryParams, queryCallback);
-                    } else if (this.connection.type === 'sqlite') {
-                        this.connection.connection.all(SQL, queryParams, queryCallback);
-                    }
-                }
+               this.runQuery(resolve, SQL, queryParams, queryCallback);
             } catch (e) {
                 reject(e);
             }
@@ -731,31 +718,71 @@ class DatabaseAction {
                 let queryParams : any[] = [];
 
                 if (this.whereArray.length !== 0) {
-                    const whereResult = this.whereArrayToSQL(this.whereArray);
+                    const whereResult = this.whereArrayConversionToSQL(this.whereArray);
 
                     SQL += whereResult.SQL;
                     queryParams = whereResult.queryParams;
                 }
 
-                if (this.isFetchSQL) {
-                    resolve(SQL);
-                } else {
-                    const queryCallback = (error : any) => {
-                        if (error) reject(error);
+                const queryCallback = (error : any) => {
+                    if (error) reject(error);
 
-                        resolve();
-                    };
+                    resolve();
+                };
 
-                    if (this.connection.type === 'mysql') {
-                        this.connection.connection.query(SQL, queryParams, queryCallback);
-                    } else if (this.connection.type === 'sqlite') {
-                        this.connection.connection.all(SQL, queryParams, queryCallback);
-                    }
-                }
+                this.runQuery(resolve, SQL, queryParams, queryCallback);
             } catch (e) {
                 reject(e);
             }
         });
+    }
+
+    // TODO: 数据库缓存
+    cache(
+        enable? : boolean | number | string,
+        time? : number | string,
+        table? : string | number
+    ) {
+        if (typeof enable === 'number') {
+            time = enable;
+        } else if (typeof enable === 'string') {
+            table = enable;
+        }
+
+        if (typeof time === 'string') {
+            table = time;
+        }
+
+        if (typeof table === 'number') {
+            time = table;
+        }
+
+        if (typeof enable !== 'boolean') {
+            enable = true;
+        }
+
+        if (typeof time !== 'number') {
+            time = 120;
+        }
+
+        if (typeof table !== 'string') {
+            table = 'nb_music_database_cache'
+        }
+
+        return new DatabaseAction(
+            this.connection,
+            this.tableName,
+            this.whereArray,
+            this.limitNumber,
+            this.fields,
+            this.orders,
+            this.isFetchSQL,
+            {
+                enable,
+                time,
+                table
+            }
+        );
     }
 
     exist() {
@@ -771,27 +798,40 @@ class DatabaseAction {
     }
     
     query(
-        SQL : string,
-        queryParams : any[] | ((error : any, results? : any) => void),
-        callback? : (error : any, results? : any) => void
+        SQL: string,
+        queryParams: any[] | ((error: any, results?: any) => void),
+        callback?: (error: any, results?: any) => void
     ) {
         if (typeof queryParams === 'function') {
             callback = queryParams;
             queryParams = [];
         }
 
-        if (this.connection.type === 'mysql') {
-            this.connection.connection.query(SQL, queryParams, callback);
-        } else if (this.connection.type === 'sqlite') {
-            this.connection.connection.all(SQL, queryParams, callback);
-        }
+        this.runQuery(null, SQL, queryParams, callback);
     }
 
     handle() {
         return this.connection;
     }
 
-    private whereArrayToSQL(whereArray : DataTableWhere[]) : { SQL: string; queryParams: any[] } {
+    private runQuery(
+        resolve: any,
+        SQL: string,
+        queryParams: any[],
+        queryCallback?: (error: any, results?: any) => void
+    ) {
+        if (this.isFetchSQL && typeof resolve === 'function') {
+            resolve(SQL);
+        } else {
+            if (this.connection.type === 'mysql') {
+                this.connection.connection.query(SQL, queryParams, queryCallback);
+            } else if (this.connection.type === 'sqlite') {
+                this.connection.connection.all(SQL, queryParams, queryCallback);
+            }
+        }
+    }
+
+    private whereArrayConversionToSQL(whereArray : DataTableWhere[]) : { SQL: string; queryParams: any[] } {
         let SQL = ` WHERE `;
         let queryParams: any[] = [];
 

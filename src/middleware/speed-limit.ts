@@ -21,6 +21,7 @@ class SpeedLimit {
             });
         }, 60 * 1000);
 
+        // 不固定时间解封
         setInterval(() => {
             Object.keys(SpeedLimit.records).forEach(ip => {
                 if (SpeedLimit.records[ip].isBan && SpeedLimit.records[ip].banEndTime < Math.floor(Date.now() / 1000)) {
@@ -42,7 +43,7 @@ class SpeedLimit {
             }
 
             if (SpeedLimit.records[req.ip].isBan) {
-                res.status(403).send(response(null, '您触发了访问频率限制，请稍后再试', -8));
+                res.status(429).send(response(null, '您触发了访问频率限制，请稍后再试', -8));
                 return;
             }
 
@@ -66,7 +67,7 @@ class SpeedLimit {
                 SpeedLimit.records[req.ip].isBan = true;
                 SpeedLimit.records[req.ip].banEndTime = Math.floor(Date.now() / 1000) + getConfig().speedLimit.banDuration;
 
-                res.status(403).send(response(null, '您触发了访问频率限制，请稍后再试', -8));
+                res.status(429).send(response(null, '您触发了访问频率限制，请稍后再试', -8));
                 return;
             } else {
                 next();

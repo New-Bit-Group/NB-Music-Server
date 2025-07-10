@@ -50,6 +50,21 @@ interface DataTableWhere {
     isOr: boolean;
 }
 
+interface DatabaseLimitNumber {
+    limit : number | null;
+    offset? : number
+}
+
+interface DatabaseOrders {
+    [name: string]: "ASC" | "DESC";
+}
+
+interface DatabaseCacheSetting {
+    enable: boolean;
+    time: number;
+    table: string;
+}
+
 interface MySQLDatabaseType {
     type: "mysql";
     connection: MySQL.Connection;
@@ -65,23 +80,13 @@ interface SQLiteDatabaseType {
     connection: SQLite.Database;
 }
 
-interface DatabaseLimitNumber {
-    limit : number | null;
-    offset? : number
-}
-
-interface DatabaseOrders {
-    [name: string]: "ASC" | "DESC";
-}
-
 type DatabaseTypes = MySQLDatabaseType | SQLiteDatabaseType;
 type CacheDatabaseTypes = RedisDatabaseType | SQLiteDatabaseType;
 
 export type {
     Config,
     HandledError,
-    DataTableWhere,
     DatabaseTypes, CacheDatabaseTypes,
     MySQLDatabaseType, RedisDatabaseType, SQLiteDatabaseType,
-    DatabaseLimitNumber, DatabaseOrders
+    DataTableWhere, DatabaseLimitNumber, DatabaseOrders, DatabaseCacheSetting
 };

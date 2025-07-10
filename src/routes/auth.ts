@@ -14,7 +14,7 @@ router.post('/login', (req, res) => {
     const biliCookies = req.headers.cookie;
 
     if (!biliCookies) {
-        res.status(400).send(response(null, '请求参数错误', -2));
+        res.status(400).send(response(null, '请求参数有误', -2));
         return;
     }
 

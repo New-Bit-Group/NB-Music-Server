@@ -1,7 +1,7 @@
 import { gunzipSync } from 'zlib';
 import { response } from './utils';
 import { ConfigLoader } from "./utils/config-loader";
-import { ClientResourceNotFoundError, handlingError } from "./utils/error";
+import { ClientError, ClientResourceNotFoundError, handlingError } from "./utils/error";
 import { HandledError } from "./utils/interfaces";
 
 import Logger from "./utils/logger";
@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 import express from "express";
 
-function handlingErrorMessage(e: HandledError) {
+const handlingErrorInfo = (e: HandledError) => {
     if (e.resource != null) {
         Logger.info(`请求资源: ${e.resource}`);
     }
@@ -33,7 +33,7 @@ process.on("uncaughtException", (err) => {
     Logger.error("服务器运行时发生错误");
     Logger.error(e.error.name + ": " + e.error.message);
 
-    handlingErrorMessage(e);
+    handlingErrorInfo(e);
 
     process.exit(1);
 });
@@ -57,7 +57,7 @@ class Server {
             "OAUlzS4uqDL6ok3hVum+DMOQKgQDEGxIkKXsGmk4+1dsirjalPwEw7zhtwomk2IQpxOWmeZjUcPqT+R47UF0" +
             "DhSLpfhEYRw8gRRvUAl02vShiKDL4ITCOO4EUJchiXuh5U8R/2Ji3iPtsN3PS4kJ5AwAA";
 
-        const version : string = JSON.parse(
+        const version: string = JSON.parse(
             fs.readFileSync(
                 path.join(__dirname, "..", "package.json"),
                 "utf-8"
@@ -70,7 +70,7 @@ class Server {
     }
 
     initializeComponents() {
-        //初始化配置
+        // 初始化配置
         ConfigLoader.initialize();
         this.server.set("trust proxy", ConfigLoader.getConfig().trustProxy);
 
@@ -92,7 +92,7 @@ class Server {
         this.server.use('/v2/auth', require('./routes/auth'));
         this.server.use('/v2/tag', require('./routes/tag'));
 
-        this.server.all("/v1/{*splat}", (_req : any, res : any) => {
+        this.server.all("/v1/{*splat}", (req : any, res : any) => {
             res.status(503).send({
                 "success": false,
                 "error": {
@@ -100,6 +100,7 @@ class Server {
                     "message": "当前客户端版本过低，请更新至最新版本"
                 }
             });
+            throw new ClientError("客户端版本过低", req.originalUrl);
         });
 
         // 没有匹配到路由时返回404
@@ -116,7 +117,7 @@ class Server {
             Logger.warning("服务器运行时发生错误");
             Logger.warning(e.error.name + ": " + e.error.message);
 
-            handlingErrorMessage(e);
+            handlingErrorInfo(e);
         });
 
         const port = ConfigLoader.getConfig().port;

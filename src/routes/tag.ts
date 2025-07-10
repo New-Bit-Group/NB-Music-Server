@@ -59,8 +59,8 @@ router.post('/', async (req : any, res) => {
     const tagId = Math.random().toString(16).slice(2);
 
     if (typeof req.body.name !== 'string') {
-        res.status(400).send(response(null, '请求参数错误', -2));
-        throw new ClientParamsError('请求参数错误', req.originalUrl);
+        res.status(400).send(response(null, '请求参数有误', -2));
+        throw new ClientParamsError('请求参数有误', req.originalUrl);
     }
 
     let tagColor : string;
@@ -109,8 +109,8 @@ router.put('/:id', async (req : any, res) => {
 
     // 没有进行任何修改，判定错误
     if (Object.keys(updateData).length === 0) {
-        res.status(400).send(response(null, '请求参数错误', -2));
-        throw new ClientParamsError('请求参数错误', req.originalUrl);
+        res.status(400).send(response(null, '请求参数有误', -2));
+        throw new ClientParamsError('请求参数有误', req.originalUrl);
     }
 
     Storage
